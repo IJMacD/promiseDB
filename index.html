@@ -1,0 +1,50 @@
+<html>
+<script src="promiseDB.js"></script>
+<script>
+(function(){
+  PromiseDB.delete("library");
+  PromiseDB.open("library", 1, function(db) {
+    // The database did not previously exist, so create object stores and indexes.
+    var store = db.createObjectStore("books", {keyPath: "isbn"});
+    var titleIndex = store.createIndex("by_title", "title", {unique: true});
+    var authorIndex = store.createIndex("by_author", "author");
+
+    // Populate with initial data.
+    store.put({title: "Quarry Memories", author: "Fred", isbn: 123456});
+    store.put({title: "Water Buffaloes", author: "Fred", isbn: 234567});
+    store.put({title: "Bedrock Nights", author: "Barney", isbn: 345678});
+  })
+  .then(function(db){
+    var tx = db.transaction("books", "readwrite");
+    var store = tx.objectStore("books");
+
+    store.put({title: "Novel Ideas", author: "Barney", isbn: 345678});
+
+    return db;
+  }).then(function(db){
+
+    var tx = db.transaction("books", "readonly");
+    var store = tx.objectStore("books");
+    var index = store.index("by_title");
+
+    return index.get("Bedrock Nights")
+      .then(function(matching) {
+        if (matching !== undefined) {
+          // A match was found.
+          console.log(matching.isbn, matching.title, matching.author);
+        } else {
+          // No match was found.
+          console.log(null);
+        }
+        return db;
+      });
+  })
+  .then(function(db){
+    db.close();
+  })
+  .catch(function(e){
+    console.log(e.stack || e);
+  });
+}());
+</script>
+</html>
